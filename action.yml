@@ -1,0 +1,41 @@
+name: Build Wiki
+description: "An automatic wiki builder for Discordia-like docgen."
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        repository: '${{ github.repository }}.wiki'
+        path: 'wiki'
+
+    - uses: actions/checkout@v4
+      with:
+        path: 'repo'
+
+    - name: Install Luvit
+      run: curl -L https://github.com/luvit/lit/raw/master/get-lit.sh | sh
+      shell: bash
+
+    - name: Generate the wiki pages
+      run: |
+        cd repo
+        ../luvit docgen.lua
+      shell: bash
+
+    - name: Set up bot
+      run: |
+        mv -f $GITHUB_WORKSPACE/repo/docs/* $GITHUB_WORKSPACE/wiki/
+        cd $GITHUB_WORKSPACE/wiki
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+      shell: bash
+
+    - name: Update the wiki repo
+      run: |
+        cd $GITHUB_WORKSPACE/wiki
+        git add --all
+        git commit -m "Rebuild for commit ${{ github.event.after }}"
+        git push
+      shell: bash
+      continue-on-error: true
